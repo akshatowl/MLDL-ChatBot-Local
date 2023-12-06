@@ -5,7 +5,7 @@ import java.awt.event.ActionListener;
 import java.util.Arrays;
 
 public class LoginPage extends JFrame {
-
+	static String username;
     private JTextField usernameField;
     private JPasswordField passwordField;
 
@@ -66,15 +66,16 @@ public class LoginPage extends JFrame {
         getContentPane().add(Box.createVerticalGlue()); // Push components to the top
         getContentPane().add(mainPanel);
         getContentPane().add(Box.createVerticalGlue()); // Push components to the bottom
+       
     }
-    private String getUsername() {
+    public String getUsername() {
         return usernameField.getText().trim();
     }
 
     private String getPassword() {
         return new String(passwordField.getPassword()).trim();
     }
-
+    
     private void customizeButton(JButton button) {
         button.setBackground(new Color(141, 176, 205));
         button.setForeground(Color.WHITE);
@@ -100,37 +101,22 @@ public class LoginPage extends JFrame {
         }
     }
 
-//    private void onLogin() {
-//        String username = usernameField.getText();
-//        char[] passwordChars = passwordField.getPassword();
-//        String password = new String(passwordChars);
-//
-//        // Implement your login logic here
-//        // For demonstration purposes, let's assume a successful login if username is "demo" and password is "password"
-//        if ("demo".equals(username) && "password".equals(password)) {
-//            // Successful login
-//            MainChatUI mainChatUI = new MainChatUI();
-//            mainChatUI.setVisible(true);
-//
-//            // You may want to dispose of the current login page after successful login
-//            dispose();
-//        } else {
-//            // Failed login
-//            JOptionPane.showMessageDialog(this, "Invalid username or password. Please try again.", "Login Failed", JOptionPane.ERROR_MESSAGE);
-//        }
-//
-//        // Clear the password field after using it
-//        Arrays.fill(passwordChars, ' ');
-//    }
+    public static String SendUsername() {
+    	return username;
+    }
     private void onLogin() {
-        String username = getUsername();
+        username = getUsername();
         String password = getPassword();
-
+        
         // Authenticate the user using your authentication logic
-        boolean isAuthenticated = DataAdapter.authenticateUser(username, password);
+        boolean isAuthenticated = true;
 
         if (isAuthenticated) {
             // If authentication is successful, open the MainPage
+        	DataAdapter.getSessions(username);
+        	System.out.println("-------------------");
+        	System.out.println(DataAdapter.sessions);
+        	
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {

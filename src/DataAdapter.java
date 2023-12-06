@@ -1,99 +1,163 @@
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class DataAdapter {
 
-    private final String BASE_URL = "http://localhost:8080/api/user";
-    private String baseUrl = "http://localhost:8080/api";
+    private static final String BASE_URL = "http://localhost:3000";
+    public static List<String> sessions = new ArrayList<String>();
 
-    public String getUser(String username) {
+    public static void main(String[] args) {
+        // Replace "your_user_id" with the actual user ID
+        String userID = "1";
+
+        // Example: Fetch sessions
+        getSessions(userID);
+
+        // Example: Send a user message
+//        sendMessage(userID, "Hello, how are you?");
+
+        // Example: Fetch messages for a specific session
+        getMessagesForSession("1701406791895");
+    }
+
+    public static int getSessions(String userID) {
         try {
-            URL url = new URL(BASE_URL + "/" + username);
+            URL url = new URL(BASE_URL + "/sessions/" + userID);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    return response.toString();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String line;
+                StringBuilder response = new StringBuilder();
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
                 }
+                reader.close();
+                
+                JSONObject obj = new JSONObject(response.toString());
+                JSONArray jArray = obj.getJSONArray("data");
+                
+                for (int i = 0 ; i < jArray.length() ; i++) {
+                	sessions.add((String.valueOf(jArray.getLong(i))));
+                }
+                System.out.println("SESSIONLENGTH"+ jArray.length());
+//                System.out.println(sessions);
+//                System.out.println(obj.getJSONArray("data"));
+//                sessions.addAll(obj.getJSONArray(userID));
+                
+                System.out.println("Sessions: " + response.toString());
+                return jArray.length();
             } else {
-                return "Failed to get user. HTTP status: " + responseCode;
+                System.out.println("Error: " + responseCode);
+                return 0;
             }
-        } catch (Exception e) {
-            return "Failed to get user. Exception: " + e.getMessage();
-        }
-    }
-    
-    public static boolean authenticateUser(String username, String password) {
-        return Server.authenticateUser(username, password);
-    }
-    public void storeSession(String userID, String sessionNum, long sessionID) {
-        try {
-            URL url = new URL(baseUrl + "/sessions/" + userID + "/" + sessionNum);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-
-            int responseCode = connection.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Session created successfully
-                System.out.println("Session created!");
-
-                // Now, you might want to trigger a message creation in MongoDB.
-                // Call the modified storeMessage function in the Server class.
-                Server server = new Server(); // Assuming you have a constructor that initializes the database
-                server.storeMessage(userID, Integer.parseInt(sessionNum), sessionID, "Session created!");
-            } else {
-                System.out.println("Error creating session. Response code: " + responseCode);
-            }
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
+            return 0;
         }
     }
 
- // Method to store a message using an HTTP request
-    public void storeMessage(String userID, long sessionID, String message, int messageNum) {
+    public static void sendMessage(String sessionID, String userID, String message) {
         try {
-            URL url = new URL(BASE_URL + "/" + sessionID + "/" + messageNum);
+            URL url = new URL(BASE_URL + "/conversations/" + sessionID +"/1");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-
-            // Include the message and userID in the request body
-            String requestBody = String.format("{\"message\": \"%s\", \"userID\": \"%s\"}", message, userID);
-
-            // Set content type
             connection.setRequestProperty("Content-Type", "application/json");
-
-            // Enable input/output streams
             connection.setDoOutput(true);
-            connection.setDoInput(true);
 
-            // Write request body
+            String jsonInputString = "{\"message\": \"" + message + "\", \"sessionID\": \"" + sessionID + "\", \"userID\": \"" + userID + "\"}";
+
             try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = requestBody.getBytes("utf-8");
+                byte[] input = jsonInputString.getBytes("utf-8");
                 os.write(input, 0, input.length);
             }
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Message stored successfully
-                System.out.println("Message stored!");
+                // Handle the success response
+                System.out.println("Message sent successfully");
             } else {
-                System.out.println("Error storing message. Response code: " + responseCode);
+                System.out.println("Error: " + responseCode);
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    private static void getMessagesForSession(String sessionID) {
+        try {
+            URL url = new URL(BASE_URL + "/conversations/" + sessionID);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
 
-    // Add other methods as needed
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String line;
+                StringBuilder response = new StringBuilder();
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                // Handle the response (parse JSON, etc.)
+                System.out.println("Messages for session " + sessionID + ": " + response.toString());
+            } else {
+                System.out.println("Error: " + responseCode);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static User getUserDetails(String userID) {
+        try {
+            URL url = new URL(BASE_URL + "/users/" + userID);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                // Parse JSON response manually into User object
+                JSONObject jsonObject = new JSONObject(response.toString());
+
+                User user = new User();
+                user.firstName = jsonObject.getString("firstName");
+                user.lastName = jsonObject.getString("lastName");
+                user.username = jsonObject.getString("username");
+                user.password = jsonObject.getString("password");
+
+                return user;
+            } else {
+                System.out.println("Error: " + responseCode);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+    
+   
 }
